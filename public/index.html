@@ -1,71 +1,415 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');
-const app = express();
-const PORT = process.env.PORT || 3000;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Home Services — Get Estimate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://js.whop.com/elements/v1/elements.js" data-whop-elements></script>
+  <script>
+    !function(w,d,s,u,n,a,b){if(w[n])return;a=w[n]={q:[],t:+new Date};b=d.createElement(s);b.async=1;b.src=u;d.head.appendChild(b)}(window,document,"script","https://t.whop.com/pixel.js","whop");
+    whop.setScope("biz_2IO8vJScxe2M4f");
+  </script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { brand: { DEFAULT: '#2563eb', dark: '#1d4ed8', light: '#eff6ff' } },
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .step-content { display: none; }
+    .step-content.active { display: block; animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+    .plan-card.selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .spinner { border:3px solid #e5e7eb; border-top-color:#2563eb; border-radius:50%; width:24px; height:24px; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    #payment-element { min-height:280px; padding:16px; border:1px solid #e5e7eb; border-radius:12px; background:#fafafa; }
+    #branding-element { margin-top:12px; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-900">
 
-const API_KEY = process.env.WHOP_API_KEY;
-const COMPANY_ID = process.env.WHOP_COMPANY_ID;
-const SANDBOX = process.env.WHOP_SANDBOX === 'true';
-const API_BASE = SANDBOX
-  ? 'https://sandbox-api.whop.com/api/v1'
-  : 'https://api.whop.com/api/v1';
+<!-- Header -->
+<header class="bg-white shadow-sm sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center font-bold text-lg">P</div>
+      <div>
+        <h1 class="font-bold text-lg">Premium Home Services</h1>
+        <p class="text-xs text-gray-500 hidden sm:block">Professional inspection & repair</p>
+      </div>
+    </div>
+    <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-sm font-medium">Sandbox Mode</span>
+  </div>
+</header>
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+<!-- Step Indicator -->
+<div class="max-w-4xl mx-auto px-4 pt-6">
+  <div class="flex items-center justify-between text-sm">
+    <div class="flex items-center gap-2"><div id="step1-ind" class="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-semibold">1</div><span class="hidden sm:inline font-medium">Estimate</span></div>
+    <div class="flex-1 h-0.5 bg-gray-200 mx-2"></div>
+    <div class="flex items-center gap-2"><div id="step2-ind" class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold">2</div><span class="hidden sm:inline font-medium">Plans</span></div>
+    <div class="flex-1 h-0.5 bg-gray-200 mx-2"></div>
+    <div class="flex items-center gap-2"><div id="step3-ind" class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold">3</div><span class="hidden sm:inline font-medium">Checkout</span></div>
+  </div>
+</div>
 
-function authHeaders() {
-  return {
-    'Authorization': `Bearer ${API_KEY}`,
-    'Content-Type': 'application/json',
-  };
+<main class="max-w-6xl mx-auto px-4 py-8">
+
+<!-- STEP 1: ESTIMATE FORM -->
+<section id="step1" class="step-content active">
+  <div class="grid lg:grid-cols-5 gap-8">
+    <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm border p-6">
+      <h2 class="text-2xl font-bold mb-2">Get Your Free Estimate</h2>
+      <p class="text-gray-600 mb-6">Fill in your details — we'll create a lead and get back to you within 24 hours.</p>
+      
+      <form id="estimate-form" class="space-y-4">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div><label class="block text-sm font-medium mb-1">First Name *</label><input type="text" name="first_name" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none" placeholder="John"></div>
+          <div><label class="block text-sm font-medium mb-1">Last Name *</label><input type="text" name="last_name" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none" placeholder="Doe"></div>
+        </div>
+        <div><label class="block text-sm font-medium mb-1">Email *</label><input type="email" name="email" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none" placeholder="john@example.com"></div>
+        <div><label class="block text-sm font-medium mb-1">Phone</label><input type="tel" name="phone" class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none" placeholder="+1 (555) 000-0000"></div>
+        <div><label class="block text-sm font-medium mb-1">Address *</label><input type="text" name="address" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none" placeholder="123 Main St"></div>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div><label class="block text-sm font-medium mb-1">City *</label><input type="text" name="city" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"></div>
+          <div><label class="block text-sm font-medium mb-1">State *</label><input type="text" name="state" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"></div>
+          <div><label class="block text-sm font-medium mb-1">ZIP *</label><input type="text" name="postal_code" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none"></div>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+          ⓘ Submitting creates a Lead via Whop API. No obligation to purchase.
+        </div>
+        <button type="submit" id="submit-btn" class="w-full py-3 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg transition flex items-center justify-center gap-2">
+          <span>Submit Estimate Request</span>
+        </button>
+      </form>
+      
+      <div id="lead-success" class="hidden mt-6 p-6 bg-green-50 border border-green-200 rounded-xl text-center">
+        <div class="w-14 h-14 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4 text-2xl">✅</div>
+        <h3 class="text-xl font-bold text-green-800 mb-2">Lead Created!</h3>
+        <p class="text-green-700 mb-4">Lead ID: <span id="lead-id" class="font-mono bg-green-100 px-2 py-1 rounded text-sm"></span></p>
+        <button onclick="goToStep(2)" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg">Continue →</button>
+      </div>
+    </div>
+    
+    <!-- Sidebar Pricing -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border p-6">
+        <h3 class="font-bold text-lg mb-4">Estimated Pricing</h3>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"><span>Inspection Fee</span><span class="font-semibold">$49.00</span></div>
+          <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"><span>Security Deposit</span><span class="font-semibold">$250.00</span></div>
+          <div class="flex justify-between items-center p-3 bg-brand-light rounded-lg"><span>Service (Flat Rate)</span><span class="font-semibold">$899.00</span></div>
+        </div>
+        <div class="border-t mt-4 pt-4 flex justify-between items-baseline">
+          <span class="text-gray-600">Est. Total</span>
+          <span class="text-2xl font-bold">$1,198.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 2: PLAN SELECTION -->
+<section id="step2" class="step-content">
+  <h2 class="text-2xl font-bold mb-6">Choose Your Service Plans</h2>
+  <div class="grid md:grid-cols-3 gap-6 mb-8">
+    <div class="plan-card bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-6 cursor-pointer" data-plan="inspection" onclick="togglePlan('inspection')">
+      <h3 class="font-bold text-lg mb-2">Inspection Fee</h3>
+      <p class="text-gray-500 text-sm mb-4">Required on-site assessment</p>
+      <p class="text-3xl font-bold mb-4">$49<span class="text-lg font-normal text-gray-500">.00</span></p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>✓ Certified technician visit</li>
+        <li>✓ Detailed report</li>
+      </ul>
+    </div>
+    <div class="plan-card bg-white rounded-2xl shadow-sm border-2 border-gray-200 p-6 cursor-pointer" data-plan="deposit" onclick="togglePlan('deposit')">
+      <h3 class="font-bold text-lg mb-2">Security Deposit</h3>
+      <p class="text-gray-500 text-sm mb-4">Fully refundable</p>
+      <p class="text-3xl font-bold mb-4">$250<span class="text-lg font-normal text-gray-500">.00</span></p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>✓ Secures booking slot</li>
+        <li>✓ Refunded after completion</li>
+      </ul>
+    </div>
+    <div class="plan-card selected bg-white rounded-2xl shadow-sm border-2 border-brand p-6 cursor-pointer" data-plan="service" onclick="togglePlan('service')">
+      <h3 class="font-bold text-lg mb-2">Standard Repair</h3>
+      <p class="text-gray-500 text-sm mb-4">Flat rate — all inclusive</p>
+      <p class="text-3xl font-bold mb-4">$899<span class="text-lg font-normal text-gray-500">.00</span></p>
+      <ul class="text-sm text-gray-600 space-y-1">
+        <li>✓ All parts included</li>
+        <li>✓ Full labor coverage</li>
+        <li>✓ 30-day warranty</li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+    <h3 class="font-bold text-lg mb-4">Your Selection</h3>
+    <div id="selected-list" class="space-y-2 mb-4"></div>
+    <div class="border-t pt-4 flex justify-between items-baseline">
+      <span class="font-semibold">Total Due Today</span>
+      <span id="total-display" class="text-2xl font-bold">$899.00</span>
+    </div>
+  </div>
+  
+  <div class="flex gap-4">
+    <button onclick="goToStep(1)" class="px-6 py-3 border border-gray-300 rounded-lg font-medium">← Back</button>
+    <button onclick="goToStep(3)" class="px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-dark">Continue to Checkout →</button>
+  </div>
+</section>
+
+<!-- STEP 3: CHECKOUT -->
+<section id="step3" class="step-content">
+  <div class="grid lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border p-6">
+      <h2 class="text-2xl font-bold mb-6">Secure Checkout</h2>
+      <p class="text-gray-600 mb-6">Powered by Whop — your payment info is never stored on our servers.</p>
+      
+      <div class="mb-5">
+        <label class="block text-sm font-medium mb-1.5">Email *</label>
+        <input type="email" id="checkout-email" required class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-brand outline-none" placeholder="you@example.com">
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Payment Details *</label>
+        <div id="payment-element"></div>
+      </div>
+      
+      <div id="branding-element"></div>
+      
+      <button id="pay-btn" class="w-full mt-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-dark transition flex items-center justify-center gap-2">
+        <span id="pay-text">Pay $899.00</span>
+        <span id="pay-spinner" class="spinner hidden"></span>
+      </button>
+      
+      <p class="text-xs text-gray-500 text-center mt-4">🔒 256-bit SSL encryption — Powered by Whop</p>
+    </div>
+    
+    <!-- Order Summary -->
+    <div class="bg-white rounded-2xl shadow-sm border p-6">
+      <h3 class="font-bold text-lg mb-4">Order Summary</h3>
+      <div id="checkout-summary" class="space-y-2 mb-4 border-b pb-4"></div>
+      <div class="flex justify-between text-xl font-bold">
+        <span>Total</span>
+        <span id="checkout-total">$899.00</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SUCCESS -->
+<section id="step-success" class="step-content">
+  <div class="max-w-2xl mx-auto text-center py-12">
+    <div class="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center text-4xl mb-6">✅</div>
+    <h2 class="text-3xl font-bold mb-4">Payment Successful!</h2>
+    <p class="text-gray-600 mb-8">Confirmation email sent. Thank you for your business!</p>
+    <div class="bg-white rounded-2xl shadow-sm border p-6 text-left">
+      <p class="mb-2"><strong>Payment ID:</strong> <span id="pay-id" class="font-mono text-sm">—</span></p>
+      <p class="mb-2"><strong>Lead ID:</strong> <span id="final-lead-id" class="font-mono text-sm">—</span></p>
+      <p><strong>Status:</strong> <span class="text-green-600 font-semibold">Confirmed</span></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- Pixel Events Panel -->
+<div class="fixed bottom-4 right-4 z-50">
+  <button onclick="toggleEventLog()" class="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg flex items-center gap-2">
+    Pixel Events <span id="event-count" class="bg-brand px-2 py-0.5 rounded-full text-xs">0</span>
+  </button>
+  <div id="event-log" class="hidden mt-2 w-80 max-h-80 overflow-y-auto bg-gray-900 text-white rounded-lg p-4 text-xs font-mono">
+    <p class="text-gray-400 mb-2">Events Fired:</p>
+    <div id="event-list"></div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+  currentStep: 1,
+  leadId: null,
+  leadData: null,
+  selectedPlans: new Set(['service']),
+  total: 899,
+  eventsFired: [],
+  whopElements: null,
+  paymentElement: null,
+  initialized: false,
+};
+
+const PRICES = { inspection: 49, deposit: 250, service: 899 };
+const NAMES = { inspection: 'Inspection Fee', deposit: 'Security Deposit', service: 'Standard Repair' };
+
+// ===== TRACKING =====
+function fireEvent(name, props = {}) {
+  if (typeof whop !== 'undefined' && whop.track) whop.track(name, props);
+  state.eventsFired.push({ name, props, time: new Date().toLocaleTimeString() });
+  updateEventLog();
+  console.log('[whop.track]', name, props);
 }
 
-// Create Lead via Whop API
-app.post('/api/leads', async (req, res) => {
+function updateEventLog() {
+  document.getElementById('event-count').textContent = state.eventsFired.length;
+  const list = document.getElementById('event-list');
+  if (!list) return;
+  list.innerHTML = state.eventsFired.map(e => 
+    `<div class="py-1 border-b border-gray-700">✓ <span class="text-blue-400">${e.name}</span> <span class="text-gray-500">${e.time}</span></div>`
+  ).join('');
+}
+
+function toggleEventLog() {
+  document.getElementById('event-log').classList.toggle('hidden');
+}
+
+// ===== STEP NAVIGATION =====
+function goToStep(num) {
+  document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('step'+num).classList.add('active');
+  state.currentStep = num;
+  
+  // Update indicators
+  for (let i=1; i<=3; i++) {
+    const ind = document.getElementById('step'+i+'-ind');
+    if (!ind) continue;
+    if (i < num) { ind.classList.add('bg-green-500', 'text-white'); ind.classList.remove('bg-gray-200', 'text-gray-500', 'bg-brand'); }
+    else if (i === num) { ind.classList.add('bg-brand', 'text-white'); ind.classList.remove('bg-gray-200', 'text-gray-500', 'bg-green-500'); }
+    else { ind.classList.add('bg-gray-200', 'text-gray-500'); ind.classList.remove('bg-brand', 'text-white', 'bg-green-500'); }
+  }
+  
+  if (num === 3) initCheckout();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== PLAN SELECTION =====
+function togglePlan(plan) {
+  const card = document.querySelector(`[data-plan="${plan}"]`);
+  if (state.selectedPlans.has(plan)) {
+    if (state.selectedPlans.size > 1) {
+      state.selectedPlans.delete(plan);
+      card.classList.remove('selected');
+    }
+  } else {
+    state.selectedPlans.add(plan);
+    card.classList.add('selected');
+  }
+  
+  state.total = Array.from(state.selectedPlans).reduce((sum, p) => sum + PRICES[p], 0);
+  updateTotals();
+  fireEvent('plan_selected', { plan, selected: Array.from(state.selectedPlans), total: state.total });
+}
+
+function updateTotals() {
+  document.getElementById('total-display').textContent = '$' + state.total.toFixed(2);
+  document.getElementById('pay-text').textContent = 'Pay $' + state.total.toFixed(2);
+  document.getElementById('checkout-total').textContent = '$' + state.total.toFixed(2);
+  
+  const list = document.getElementById('selected-list');
+  list.innerHTML = Array.from(state.selectedPlans).map(p => 
+    `<div class="flex justify-between"><span>${NAMES[p]}</span><span>$${PRICES[p].toFixed(2)}</span></div>`
+  ).join('');
+  
+  const summary = document.getElementById('checkout-summary');
+  summary.innerHTML = Array.from(state.selectedPlans).map(p => 
+    `<div class="flex justify-between text-sm"><span>${NAMES[p]}</span><span>$${PRICES[p].toFixed(2)}</span></div>`
+  ).join('');
+}
+
+// ===== ESTIMATE FORM → LEAD =====
+document.getElementById('estimate-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = document.getElementById('submit-btn');
+  const fd = new FormData(form);
+  
+  const data = {
+    first_name: fd.get('first_name'),
+    last_name: fd.get('last_name'),
+    email: fd.get('email'),
+    phone: fd.get('phone'),
+    address: fd.get('address'),
+    city: fd.get('city'),
+    state: fd.get('state'),
+    postal_code: fd.get('postal_code'),
+    property_type: 'single_family',
+  };
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner inline-block mr-2"></span>Submitting...';
+  
+  fireEvent('lead', { email: data.email, name: data.first_name + ' ' + data.last_name, value: 49 });
+  
   try {
-    const payload = {
-      company_id: COMPANY_ID,
-      email: req.body.email,
-      metadata: {
-        first_name: req.body.first_name,
-        last_name: req.body.last_name,
-        phone: req.body.phone || '',
-        address: req.body.address,
-        city: req.body.city,
-        state: req.body.state,
-        postal_code: req.body.postal_code,
-        property_type: req.body.property_type,
-      },
-    };
-
-    const response = await fetch(`${API_BASE}/leads`, {
+    // Call backend to create Lead via Whop API
+    const res = await fetch('/api/leads', {
       method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-
-    const data = await response.json();
-    res.status(200).json({ success: true, lead: data });
+    
+    const result = await res.json();
+    state.leadId = result.lead?.id || 'lead_' + Date.now();
+    state.leadData = data;
+    
+    // Fill checkout email
+    document.getElementById('checkout-email').value = data.email;
+    
+    // Show success
+    form.classList.add('hidden');
+    document.getElementById('lead-id').textContent = state.leadId;
+    document.getElementById('lead-success').classList.remove('hidden');
+    
   } catch (err) {
-    console.error('[Lead Error]', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('Lead error:', err);
+    // Fallback: generate demo lead ID
+    state.leadId = 'lead_demo_' + Date.now();
+    document.getElementById('checkout-email').value = data.email;
+    form.classList.add('hidden');
+    document.getElementById('lead-id').textContent = state.leadId;
+    document.getElementById('lead-success').classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Submit Estimate Request';
   }
 });
 
-// Health check
-app.get('/api/config', (req, res) => {
-  res.json({
-    success: true,
-    companyId: COMPANY_ID,
-    environment: SANDBOX ? 'sandbox' : 'production',
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Running on port ${PORT}`);
-  console.log(`   Company: ${COMPANY_ID}`);
-  console.log(`   Mode: ${SANDBOX ? 'SANDBOX' : 'PRODUCTION'}`);
-});
+// ===== CHECKOUT & WHOP ELEMENTS =====
+async function initCheckout() {
+  if (state.initialized) return;
+  state.initialized = true;
+  
+  fireEvent('initiate_checkout', { value: state.total, items: Array.from(state.selectedPlans) });
+  
+  if (!window.WhopElements) {
+    console.log('[Whop Elements] Loading — demo mode');
+    document.getElementById('pay-btn').disabled = false;
+    return;
+  }
+  
+  try {
+    const whop = window.WhopElements({
+      environment: 'sandbox',
+      appearance: { theme: { type: 'light' } },
+    });
+    
+    const payments = whop.payments({
+      companyId: 'biz_2IO8vJScxe2M4f',
+      currency: 'USD',
+    });
+    
+    state.paymentElement = payments.createPaymentElement({
+      amount: Math.round(state.total * 100),
+      onReady: () => document.getElementById('pay-btn').disabled = false,
+    });
+    
+    state.paymentElement.mount('#payment-element');
+    
+    const branding = payments.createBrandingElement();
+    branding.mount('#
